@@ -1,0 +1,12 @@
+services:
+    db:
+        hostname: db
+        image: pgvector/pgvector:pg16
+        ports:
+            - 6024:5432
+        restart: always
+        environment:
+            - POSTGRES_DB=vectordb
+            - POSTGRES_USER=langchain
+            - POSTGRES_PASSWORD=langchain
+            - POSTGRES_HOST_AUTH_METHOD=trust
