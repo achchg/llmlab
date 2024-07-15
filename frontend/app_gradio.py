@@ -4,7 +4,6 @@ import gradio as gr
 
 from langchain.vectorstores.pgvector import PGVector
 from langchain.embeddings.sentence_transformer import SentenceTransformerEmbeddings
-from transformers import TextIteratorStreamer, AutoTokenizer
 import torch
 from threading import Thread
 import ollama
@@ -24,14 +23,6 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
-
-# model = AutoModelForCausalLM.from_pretrained(
-#     args.model_name,
-#     low_cpu_mem_usage=True,
-#     torch_dtype=torch.float16
-# )
-
-tokenizer = AutoTokenizer.from_pretrained('distilroberta-base')
 
 CONNECTION_STRING=PGVector.connection_string_from_db_params(
         driver="psycopg2",
@@ -97,7 +88,6 @@ with gr.Blocks() as demo:
         for query, response in history:
             chat_history.append({"role": "user", "content": query})
             chat_history.append({"role": "assistant", "content": response})  
-        # chat_history.append({"role": "user", "content": msg})
         return chat_history
 
     def bot(chat_history, temperature, k=1):
@@ -118,12 +108,8 @@ with gr.Blocks() as demo:
 
         generation_kwargs = dict(
             model=args.model_name,
-            # prompt = prompt.template,
             stream=True,
-            # max_new_tokens=max_new_tokens,
-            # do_sample=True,
             temperature=temperature,
-            # use_cache=True
         )
         
         response = ollama.chat(model=args.model_name, stream=False, messages=chat_history)['message']['content']
@@ -149,7 +135,6 @@ with gr.Blocks() as demo:
     msg.submit(user, [msg, chat_history], [msg, chat_history], queue=False).then(
         bot, [chat_history, temperature], chat_history
     )
-
 
 
 demo.queue()

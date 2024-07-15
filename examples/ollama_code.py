@@ -7,7 +7,6 @@ from langchain_core.prompts import ChatPromptTemplate
 from langfuse import Langfuse
 from langfuse.callback import CallbackHandler
 
-# llm = Ollama(model="llama2")
 llm = ChatOllama(model="llama3")
 
 text = "You are a travel agent that help people prepare travel itinerary. {question}"
