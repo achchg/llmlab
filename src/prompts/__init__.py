@@ -1,1 +1,1 @@
-from .prompt_template import TravelPrompt
+from .prompt_template import CVPrompt

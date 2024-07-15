@@ -86,8 +86,8 @@ def generate_embeddings(text_list, meta_data_list, new_docs=True):
     
 
 url = 'https://achchg.github.io'
-# embedded_urls = extract_urls(url)
-embedded_urls = []
+embedded_urls = extract_urls(url)
+# embedded_urls = []
 urls = [url] + embedded_urls
 
 text_list = []

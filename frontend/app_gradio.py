@@ -11,7 +11,7 @@ import ollama
 import os
 
 
-from src.prompts.prompt_template import TravelPrompt
+from src.prompts.prompt_template import CVPrompt
 
 
 parser = argparse.ArgumentParser()
@@ -62,7 +62,7 @@ with gr.Blocks() as demo:
     msg = gr.Textbox(label="Question", interactive=True)
 
     with gr.Accordion(label="Generation Parameters", open = False):
-        prompt = TravelPrompt()
+        prompt = CVPrompt()
         prompt_format = gr.Textbox(
             label="Formatting prompt",
             value=f"""{prompt.template}
@@ -85,47 +85,69 @@ with gr.Blocks() as demo:
 
 
     def user(user_message, history):
-        return f"Response: {user_message}", [[user_message, None]]
+        if history:
+            history.append([user_message, None])
+            return "", history
+        else:
+            return "", [[user_message, None]]
+    
+    def format_history(history: list[list[str, str]], system_prompt: str):
+        chat_history = [{"role": "system", "content": system_prompt}]
+        print(f"history:{history}")
+        for query, response in history:
+            chat_history.append({"role": "user", "content": query})
+            chat_history.append({"role": "assistant", "content": response})  
+        # chat_history.append({"role": "user", "content": msg})
+        return chat_history
 
-    def bot(chat_history, prompt_format, max_new_tokens, temperature, k=1):
-        similarity_scores = db.similarity_search_with_score(chat_history[-1][0], k = k)
-        
-        formatted_inst = prompt_format.format(
-            context = similarity_scores[0][0].page_content,
-            question = chat_history[-1][0]
-        )
+    def bot(chat_history, temperature, k=1):
+        print(f"chat_history-start: {chat_history}")
+        msg = chat_history[-1][0]
+        similarity_scores = db.similarity_search_with_score(msg, k = k)
+
+        print(f"content-all: {similarity_scores}")
         print(f"content: {similarity_scores[0][0].page_content}")
         print(f"similarity_score: {similarity_scores[0][1]}")
 
-        input_ids = tokenizer(
-            formatted_inst, return_tensors="pt", truncation=True
+        formatted_prompt = prompt.template.format(
+            context = similarity_scores[0][0].page_content
         )
-
-        streamer = TextIteratorStreamer(tokenizer, skip_prompt=True)
+        
+        chat_history = format_history(chat_history, formatted_prompt)
+        print(f"chat_history: {chat_history}")
 
         generation_kwargs = dict(
             model=args.model_name,
-            prompt = prompt.template,
-            stream=streamer,
+            # prompt = prompt.template,
+            stream=True,
             # max_new_tokens=max_new_tokens,
             # do_sample=True,
-            # temperature=temperature,
+            temperature=temperature,
             # use_cache=True
         )
+        
+        response = ollama.chat(model=args.model_name, stream=False, messages=chat_history)['message']['content']
+        print(response)
 
-        print(ollama.generate(model=args.model_name,
-            prompt = prompt.template,
-            stream=streamer))
+        print(f"chat_history - 0: {chat_history}")
+        chat_history[-1]["content"] = ""
+        print(f"list of responses: {list(response.split(' '))}")
+        for new_text in list(response.split(' ')):
+            if new_text != " ":
+                # print(f"new_text: {new_text}")
+                chat_history[-1]["content"] += new_text + " "
+                # print(f"chat_history - 1: {chat_history}")
 
-        thread = Thread(target=ollama.generate, kwargs=generation_kwargs)
-        thread.start()
-        chat_history[-1][1] = ""
-        for new_text in streamer:
-            chat_history[-1][1] += new_text
-            yield chat_history
+        chat_history_no_prompt = chat_history[1:]
+        chat_history = [[chat_history_no_prompt[i*2]['content'], 
+                         chat_history_no_prompt[i*2+1]['content']] for i in range(len(chat_history_no_prompt) // 2)]
+        
+        print(f"chat_history - 2: {chat_history}")
+        yield chat_history
+    
 
     msg.submit(user, [msg, chat_history], [msg, chat_history], queue=False).then(
-        bot, [chat_history, prompt_format, max_new_tokens, temperature], chat_history
+        bot, [chat_history, temperature], chat_history
     )
 
 
