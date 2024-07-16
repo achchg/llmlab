@@ -10,6 +10,25 @@ logger = getLogger(__name__)
 
 # use requests to fetch and extract page content
 def get_page_content(url):
+    """
+    Retrieves the content of a webpage given a URL.
+
+    Args:
+        url (str): The URL of the webpage to retrieve.
+
+    Returns:
+        BeautifulSoup: A BeautifulSoup object representing the parsed HTML content of the webpage.
+
+    Raises:
+        Exception: If the webpage content cannot be retrieved after multiple attempts.
+
+    Notes:
+        - The function uses the `requests` library to send a GET request to the URL with a custom User-Agent header.
+        - If the response status code is 200, the function returns a BeautifulSoup object parsed from the response content.
+        - If the response status code is 429 (rate limited), the function waits for the specified number of seconds and retries.
+        - If the response status code is anything other than 200 or 429, an exception is raised.
+        - The function retries a maximum of 5 times before raising an exception if the content cannot be retrieved.
+    """
     headers = {'User-Agent': 'Mozilla/5.0'}
     max_retries = 5
     for attempt in range(max_retries):
@@ -31,6 +50,16 @@ def get_page_content(url):
 
 # find and extract other urls
 def extract_urls(url):
+    """
+    Retrieves additional external URLs from the profile URL.
+    
+    Args:
+        url (str): The URL of the webpage containing the external URLs.
+    
+    Returns:
+        list: A list of extracted external URLs.
+    """
+
     soup = get_page_content(url)
     urls = []
     titles = ['LinkedIn', 'Google Scholar']
@@ -46,6 +75,15 @@ def extract_urls(url):
 
 # extract text from urls
 def extract_text_from_url(url):
+    """
+    Retrieves text content from a webpage URL.
+
+    Args:
+        url (str): The URL of the webpage to extract text from.
+
+    Returns:
+        str: The extracted text content from the webpage.
+    """
     soup = get_page_content(url)
     paragraphs = soup.find_all('p')
     text = ' '.join([para.get_text() for para in paragraphs])
@@ -53,9 +91,18 @@ def extract_text_from_url(url):
 
 # generate embedding
 def generate_embeddings(text_list, meta_data_list, new_docs=True):
-    model = SentenceTransformerEmbeddings(model_name='all-MiniLM-L6-v2')
-    embedding_function = SentenceTransformerEmbeddings(
-    model_name='all-MiniLM-L6-v2')
+    """
+    Generates embeddings with PGVector for a list of texts and metadata using SentenceTransformer model.
+    
+    Args:
+        text_list (list): List of texts to generate embeddings for.
+        meta_data_list (list): List of metadata corresponding to the texts.
+        new_docs (bool, optional): If True, creates a new embedded database; else adds data to an existing one. Defaults to True.
+    
+    Returns:
+        None
+    """
+    embedding_function = SentenceTransformerEmbeddings(model_name='all-MiniLM-L6-v2')
     
     CONNECTION_STRING=PGVector.connection_string_from_db_params(
         driver="psycopg2",
@@ -85,17 +132,6 @@ def generate_embeddings(text_list, meta_data_list, new_docs=True):
         logger.info(f"Added additional data point to the embedded db {collection_name}.")
     
 
-url = 'https://achchg.github.io'
-embedded_urls = extract_urls(url)
-# embedded_urls = []
-urls = [url] + embedded_urls
-
-text_list = []
-metadata_list = []
-for url in urls:
-    text_list.append(extract_text_from_url(url))
-    metadata_list.append({"url":url})
-
 if __name__ == "__main__":
     import argparse
 
@@ -105,5 +141,26 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    url = 'https://achchg.github.io'
+
+    # find and extract other urls
+    embedded_urls = extract_urls(url)
+
+    # uncomment the below when the rate limit is hit
+    # embedded_urls = []
+    urls = [url] + embedded_urls
+
+    # extract text from urls
+    text_list = []
+    metadata_list = []
+    for url in urls:
+        text = extract_text_from_url(url)
+        if len(text) > 0:
+            text_list.append(text)
+            metadata_list.append({"url":url})
+        else:
+            logger.info(f"No text found in {url}.")
+
+    # generate embeddings
     generate_embeddings(text_list, metadata_list, new_docs=args.new)
     
