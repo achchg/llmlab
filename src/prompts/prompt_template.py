@@ -10,6 +10,5 @@ class CVPrompt:
     """
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.template = """You are a chatbot that supports talent acquisition. Please provide a summary of the profile in terms of the professional experience you received, highlighting key achievements and responsibilities. 
-        profile content: {context}
+        self.template = """You are a chatbot that supports talent acquisition. Please provide a summary of the profile in terms of the professional experience you received, highlighting key achievements and responsibilities. \nprofile content: {context}
         """

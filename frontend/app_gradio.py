@@ -6,8 +6,9 @@ from langchain.vectorstores.pgvector import PGVector
 from langchain.embeddings.sentence_transformer import SentenceTransformerEmbeddings
 import ollama
 
-
 from src.prompts.prompt_template import CVPrompt
+from langfuse import Langfuse
+from langfuse.callback import CallbackHandler
 
 # use parser to pull model
 parser = argparse.ArgumentParser()
@@ -20,6 +21,11 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
+langfuse = Langfuse()
+langfuse_handler = CallbackHandler(
+    session_id="test-1234",
+    user_id = "chi-local"
+)
 
 # connect to vectorstore
 CONNECTION_STRING=PGVector.connection_string_from_db_params(
@@ -69,7 +75,6 @@ with gr.Blocks() as demo:
             k = gr.Slider(
                 minimum=1, maximum=5, value = 1, label="# of Retrieved files", interactive=True
             )
-
     
     clear = gr.ClearButton([msg, chat_history])
     
@@ -138,6 +143,17 @@ with gr.Blocks() as demo:
         )
         print(f"formatted_prompt: {formatted_prompt}")
 
+        langfuse.create_prompt(
+            name="ollama-cv-prompt",
+            prompt=formatted_prompt,
+            is_active=True,
+            config = {
+                "model": args.model_name,
+                "temperature": temperature,
+                "k": k,
+                "supported_languages": ["en"]
+            }
+        )
         chat_history = format_history(chat_history, formatted_prompt)
         print(f"chat_history: {chat_history}")
 
