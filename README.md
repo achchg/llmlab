@@ -31,3 +31,4 @@ conda env create -f environment.yml
 - To run the app: `python frontend/app_gradio.py --model_name mistral`
 - Demo: <video src='https://www.youtube.com/watch?v=eSxMgvQcgqo' width=180/>
 
+[<img src="https://img.youtube.com/vi/eSxMgvQcgqo/maxresdefault.jpg" width="50%">](https://youtu.be/eSxMgvQcgqo)
